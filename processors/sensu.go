@@ -2,9 +2,11 @@ package sensu
 
 
 import (
+    "encoding/json"
     "errors"
     "fmt"
     "log"
+    "os/exec"
     "strings"
     "time"
     "github.com/streadway/amqp"
@@ -25,7 +27,7 @@ func report(level string, err error, msg string) {
 }
 
 
-type SensuCollector struct {
+type SensuProcessor struct {
     Host string
 
     Config map[string]string
@@ -38,7 +40,7 @@ type SensuCollector struct {
 }
 
 
-func (self *SensuCollector) Process() {
+func (self *SensuProcessor) Process() chan bool, chan bool {
     connstr := fmt.Sprintf("amqp://%s:%s@%s:%s/%s",
         self.Config["user"],
         self.Config["password"],
@@ -105,13 +107,28 @@ func (self *SensuCollector) Process() {
         )
     }
 
-    forever := make(chan bool)
-
     go func() {
-        for request := range msgs {
-            report("info", errors.New("request: "), fmt.Sprintf("%s", request.Body))
+        var request struct {
+            Command string
+            Name string
+            Issued  int
+        }
+        for req := range msgs {
+            report("info", errors.New("request: "), fmt.Sprintf("%s", req.Body))
+        	err := json.NewDecoder(req.Body).Decode(&request)
+        	report("error", err, "Failed to parse request body")
+
+
+            cmd := exec.Command(request.Command)
+	        stdout, err := cmd.StdoutPipe()
+            report("error", err, "Failed to create stdout pipe")
+            report("info", errors.New(fmt.Sprintf("%s", req.Body)),
+                "Running command %s", request.Command))
+	        err = cmd.Start()
+            report("error", err,
+                "Failed to run command %s", request.Command)
+            )
         }
     }()
 
-    <-forever
 }

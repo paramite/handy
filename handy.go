@@ -1,10 +1,10 @@
 package main
 
-import "github.com/paramite/handy/collectors"
+import "github.com/paramite/handy/processors"
 
 
 func main() {
-    collector := sensu.SensuCollector{
+    processor := sensu.SensuProcessor{
         Host: "mrhandy-test.internal" ,
         Config: map[string]string{
             "user": "sensu",
@@ -13,10 +13,7 @@ func main() {
             "port": "5672",
             "vhost": "/sensu",
         },
-        Subscription: []string{"overcloud-nova-conductor", "overcloud-nova-compute"},
+        Subscription: []string{"all", "overcloud-nova-conductor", "overcloud-nova-compute"},
     }
-
-    collector.Initialize()
-    collector.Process()
-    collector.Destroy()
+    processor.Process()
 }
